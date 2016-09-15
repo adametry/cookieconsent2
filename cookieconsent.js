@@ -94,16 +94,19 @@
     },
 
     setCookie: function (name, value, expiryDays, domain, path) {
-      expiryDays = expiryDays || 365;
+      var cookie = [name + '=' + value];
 
-      var exdate = new Date();
-      exdate.setDate(exdate.getDate() + expiryDays);
+      if (expiryDays !== 0) {
+        expiryDays = expiryDays || 365;
 
-      var cookie = [
-        name + '=' + value,
-        'expires=' + exdate.toUTCString(),
-        'path=' + path || '/'
-      ];
+        var exdate = new Date();
+        exdate.setDate(exdate.getDate() + expiryDays);
+
+        cookie.push('expires=' + exdate.toUTCString());
+      } else if (navigator.userAgent.indexOf('MSIE') < 0) {
+        cookie.push('expires=0');
+      }
+      cookie.push('path=' + path || '/');
 
       if (domain) {
         cookie.push(
@@ -230,7 +233,8 @@
   var cookieconsent = {
     options: {
       message: 'This website uses cookies to ensure you get the best experience on our website. ',
-      dismiss: 'Got it!',
+      accept: 'Got it!',
+      refuse: null,
       learnMore: 'More info',
       link: null,
       target: '_self',
@@ -239,10 +243,16 @@
       domain: null, // default to current domain.
       path: '/', 
       expiryDays: 365,
+      acceptCookieStatus: 'yes',
+      refuseCookieStatus: 'no',
+      actionCookie: null,
+      acceptCookieAction: null,
+      refuseCookieAction: null,
       markup: [
         '<div class="cc_banner-wrapper {{containerClasses}}">',
         '<div class="cc_banner cc_container cc_container--open">',
-        '<a href="#null" data-cc-event="click:dismiss" target="_blank" class="cc_btn cc_btn_accept_all">{{options.dismiss}}</a>',
+        '<a href="#null" data-cc-event="click:accept" target="_blank" class="cc_btn cc_btn_accept_all">{{options.accept}}</a>',
+        '<a href="#null" data-cc-if="options.refuse" data-cc-event="click:refuse" target="_blank" class="cc_btn cc_btn_refuse_all">{{options.refuse}}</a>',
 
         '<p class="cc_message">{{options.message}} <a data-cc-if="options.link" target="{{ options.target }}" class="cc_more_info" href="{{options.link || "#null"}}">{{options.learnMore}}</a></p>',
 
@@ -328,15 +338,29 @@
       }
     },
 
-    dismiss: function (evt) {
+    accept: function (evt) {
       evt.preventDefault && evt.preventDefault();
       evt.returnValue = false;
-      this.setDismissedCookie();
+      this.setDismissedCookie(this.options.acceptCookieStatus || 'yes');
+      this.setActionCookie(this.options.acceptCookieAction);
+      this.container.removeChild(this.element);
+    },
+    refuse: function (evt) {
+      evt.preventDefault && evt.preventDefault();
+      evt.returnValue = false;
+      this.setDismissedCookie(this.options.refuseCookieStatus || 'no');
+      this.setActionCookie(this.options.refuseCookieAction);
       this.container.removeChild(this.element);
     },
 
-    setDismissedCookie: function () {
-      Util.setCookie(DISMISSED_COOKIE, 'yes', this.options.expiryDays, this.options.domain, this.options.path);
+    setDismissedCookie: function (value) {
+      Util.setCookie(DISMISSED_COOKIE, value, this.options.expiryDays, this.options.domain, this.options.path);
+    },
+
+    setActionCookie: function (value) {
+      if (this.options.actionCookie && value) {
+        Util.setCookie(this.options.actionCookie, value, 0, this.options.domain, this.options.path);
+      }
     }
   };
 
